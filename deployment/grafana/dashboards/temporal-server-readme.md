@@ -4,7 +4,7 @@ A comprehensive Grafana dashboard for monitoring a self-hosted [Temporal](https:
 
 > **Compatibility:** Temporal Server v1.20+ · Grafana 9.0+ · Prometheus
 
-> **Current version:** v2.3.0 — see [CHANGELOG](./temporal-server-changelog.md)
+> **Current version:** v2.4.0 — see [CHANGELOG](./temporal-server-changelog.md)
 
 ---
 
@@ -87,7 +87,7 @@ metrics:
 | **Namespace** | Filters most panels to a specific Temporal namespace | — |
 | **Percentile** | Histogram quantile for latency and size panels | `0.99` |
 
-All panels that show rates use `$__rate_interval` for Prometheus rate calculations. All latency and size panels respect the selected percentile variable.
+All panels that show rates use `$__rate_interval` for Prometheus rate calculations, except **Immediate Queue Lag per Pod** and **Scheduled Queue Lag per Pod** which use a hardcoded `[11m]` window — see [Shard Queue Health](#9-shard-queue-health) for the reason. All latency and size panels respect the selected percentile variable.
 
 ---
 
@@ -218,12 +218,14 @@ Also tracks SQL connection pool refresh failures — the earliest signal for a D
 
 | Panel | Description |
 |---|---|
-| **Immediate Queue Lag per Pod** | Task ID delta between the high watermark and the minimum pending immediate task per history pod and task category (`shardinfo_immediate_queue_lag`). Emitted every 5 minutes per shard via `emitShardInfoMetricsLogs()`. A line rising monotonically across multiple ticks indicates a stuck shard on that pod. Orange > 500K tasks, red > 3M tasks (matches the server's internal log threshold). |
-| **Scheduled Queue Lag per Pod** | Time delta between the high watermark fire time and the oldest pending scheduled task fire time per history pod and task category (`shardinfo_scheduled_queue_lag`). Orange > 10 min, red > 30 min (matches the server's internal log threshold). |
-| **DB Pool Refresh Failure Rate per Pod** | Rate of failed SQL connection pool refresh attempts per history pod (`persistence_session_refresh_failures`). Fires immediately when the pool cannot reconnect to the DB — the earliest metric signal for a DB-caused stuck shard, before queue lag has time to build. Any non-zero value warrants investigation. SQL backends only (PostgreSQL, MySQL) — not emitted for Cassandra. |
-| **DB Pool Refresh Failure Ratio per Pod** | Ratio of failed to total SQL connection pool refresh attempts per pod. Orange > 10%, red > 50%. More stable than raw rate for alerting across clusters of different sizes. SQL backends only. |
+| **Immediate Queue Lag per Pod** | Task ID delta between the high watermark and the minimum pending immediate task per history pod and task category (`shardinfo_immediate_queue_lag`). Emitted every 5 minutes per shard via `emitShardInfoMetricsLogs()`. Uses a fixed `[11m]` rate window instead of `$__rate_interval` — the metric's 5-minute emission cycle means a shorter window never captures 2 consecutive data points, causing `histogram_quantile` to return NaN. A line rising monotonically across multiple ticks indicates a stuck shard on that pod. Orange > 500K tasks, red > 3M tasks (matches the server's internal log threshold). |
+| **Scheduled Queue Lag per Pod** | Time delta between the high watermark fire time and the oldest pending scheduled task fire time per history pod and task category (`shardinfo_scheduled_queue_lag`). Also uses a fixed `[11m]` rate window for the same reason as Immediate Queue Lag. Orange > 10 min, red > 30 min (matches the server's internal log threshold). |
+| **DB Pool Refresh Failure Rate per Pod** | Rate of failed SQL connection pool refresh attempts per history pod (`persistence_session_refresh_failures`). The metric carries a `failure` tag with two values: `failure="error"` (actual `connect()` failure — logged as "unable to refresh database connection pool") and `failure="throttle"` (rate-limited attempt — logged as "did not refresh because the last refresh was too close", governed by a 1-second minimum interval). Both are captured by this panel. During a real DB outage, `failure="throttle"` events typically dominate by orders of magnitude because many concurrent goroutines hit the rate limiter between each actual connection attempt. Any non-zero value warrants investigation. SQL backends only (PostgreSQL, MySQL) — not emitted for Cassandra. |
+| **DB Pool Refresh Failure Ratio per Pod** | Ratio of failed to total SQL connection pool refresh attempts per pod (`persistence_session_refresh_failures` / `persistence_session_refresh_attempts`). Orange > 10%, red > 50%. More stable than raw rate for alerting across clusters of different sizes. SQL backends only. |
 | **Suspected Deadlocks (current) per Pod** | Current number of unresolved suspected deadlocks per history pod (`dd_current_suspected_deadlocks`). Increments when the deadlock detector's shard lock or io-semaphore ping times out; decrements when the lock is eventually released. Any value above zero means a shard lock is currently held — pod restart required. **This metric is event-driven: it only appears when a deadlock is detected. Absence of data is healthy and expected.** |
 | **Deadlock Event Rate per Pod** | Rate of suspected deadlock detection events per history pod (`dd_suspected_deadlocks`). Complements the current gauge — shows the cumulative rate of detection events even after `dd_current_suspected_deadlocks` has decremented back to zero. Any non-zero rate warrants checking pod logs for the goroutine dump (emitted automatically when `system.deadlock.DumpGoroutines=true`, which is the default). |
+| **Task Scheduler Latency per Operation** | In-memory schedule-to-start latency: time between a history task being loaded into memory and acquiring an executor worker (`task_latency_schedule`), broken down by operation at the selected percentile. Rises when the `history.transferProcessorSchedulerWorkerCount` goroutine pool (default 512) is fully saturated. A sustained rise on `Transfer.*` operations while other namespaces slow down indicates a bulk-processing workload (e.g. mass workflow terminations or deletions) starving the shared pool. **This config is hot-reloadable — no restart required.** Temporarily reduce it via dynamic config to throttle the saturating namespace; restore afterward. Orange > 500ms, red > 2s. |
+| **Task Scheduler Throttled Rate per Operation** | Rate of tasks explicitly turned away by the host-level task scheduler (`task_scheduler_throttled`), broken down by operation. Complements Task Scheduler Latency — throttled tasks are rejected rather than queued, so any sustained non-zero rate confirms the scheduler is at capacity. Use alongside the latency panel to distinguish saturation (latency rises) from hard rejection (throttled counter rises). |
 
 ---
 
@@ -316,7 +318,7 @@ Tracks the number of concurrent long-poll requests from SDK workers to the Front
 
 ### 16. Visibility
 
-Tracks the performance and availability of the Temporal Visibility store, which powers workflow search and listing APIs. Backed by either Elasticsearch (advanced visibility) or the primary database (standard visibility).
+Tracks the performance and availability of the Temporal Visibility store, which powers workflow search and listing APIs. Backed by either Elasticsearch (advanced visibility) or the primary database (standard visibility). When dual visibility is enabled, the three store-level panels split by `visibility_index_name` to distinguish primary from secondary store health.
 
 | Panel | Description |
 |---|---|
@@ -324,6 +326,9 @@ Tracks the performance and availability of the Temporal Visibility store, which 
 | **Visibility Availability** | Percentage of visibility-related service requests that succeeded, shown as a gauge. Covers `ListWorkflowExecutions`, `CountWorkflowExecutions`, `ScanWorkflowExecutions` and similar. Thresholds: 99% green, 95% orange. |
 | **Visibility Task End-to-End Latencies** | End-to-end queue latency for visibility tasks — from when a task is generated to when it is processed. High values mean workflow state changes are taking longer to appear in visibility search results. |
 | **Visibility Task Processing by Operation** | Processing latency of individual visibility tasks broken down by operation. Isolates the time spent in the visibility write itself, separate from time spent waiting in the queue. |
+| **Visibility Write Request Rate per Store** | Rate of visibility persistence write requests split by `visibility_index_name` (primary vs secondary) and operation. A flat line on one store while the other continues indicates that store has stopped receiving writes — either it is down or dual write mode has changed. Only meaningful when dual visibility is enabled. |
+| **Visibility Write Error Rate per Store** | Rate of visibility persistence errors split by `visibility_index_name` and operation. Any sustained non-zero value on a store is the primary alert signal for a visibility store outage. History retries indefinitely (backoff: 1s initial, 1.1× coefficient, 3-minute cap). Orange > 0.1 req/s, red > 1 req/s. |
+| **Visibility Write Latency per Store** | P-selected percentile write latency per visibility store split by `visibility_index_name` and operation. Divergence between primary and secondary latency indicates one store is under pressure or recovering. Use alongside the error rate panel to distinguish a slow store from a failed one. Orange > 3s, red > 5s. |
 
 ---
 
@@ -467,6 +472,8 @@ The following panels have threshold reference lines configured:
 | **Visibility Latencies per Operation** | 3s | 5s |
 | **Visibility Task End-to-End Latencies** | 3s | 5s |
 | **Visibility Task Processing by Operation** | 2s | 5s |
+| **Visibility Write Error Rate per Store** | 0.1 req/s | 1 req/s |
+| **Visibility Write Latency per Store** | 3s | 5s |
 
 ### Cluster Replication
 
