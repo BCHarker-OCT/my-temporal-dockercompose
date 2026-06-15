@@ -10,6 +10,9 @@ WORKDIR /app
 # go.work is present for local development (redirects /deps/* to host paths).
 # Disable it here so the go.mod replace directives pointing to /deps/* are used instead.
 ENV GOWORK=off
+# Patch any hardcoded local replace directives in dependency go.mod files
+# (temporal-etcd-dynconfig/go.mod has a replace pointing to the host machine path)
+RUN sed -i 's|=> /Users/[^ ]*/temporal/temporal|=> /deps/temporal|g' /deps/temporal-etcd-dynconfig/go.mod
 RUN go mod tidy && \
     CGO_ENABLED=0 GOOS=linux go build -o temporal-server .
 

@@ -9,7 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
 	github.com/temporalio/temporal-etcd-dynconfig v0.0.0-00010101000000-000000000000
 	github.com/urfave/cli/v2 v2.27.7
-	go.temporal.io/api v1.62.12-0.20260430203359-15c391664683
+	go.temporal.io/api v1.62.8
 	go.temporal.io/server v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.80.0
 )

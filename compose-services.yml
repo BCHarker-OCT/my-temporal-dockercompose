@@ -19,7 +19,7 @@ services:
       - --data-dir=/etcd-data
       - --log-level=warn
     ports:
-      - published: 2379
+      - published: 23790
         target: 2379
     volumes:
       - etcd-data:/etcd-data
@@ -527,7 +527,7 @@ services:
     image: prom/prometheus:${PROMETHEUS_IMG}
     command: --config.file=/etc/prometheus/prometheus.yml --log.level=error
     ports:
-      - published: 9090
+      - published: 9091
         target: 9090
     volumes:
       - type: bind
