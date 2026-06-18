@@ -47,9 +47,13 @@ echo "   UID: $DS_UID"
 # ---------------------------------------------------------------------------
 # 2. Copy dashboard JSON
 # ---------------------------------------------------------------------------
-echo "→ Deploying dashboard..."
+echo "→ Deploying dashboards..."
 cp "${METRICS_REPO}/metrics/dashboards/server/temporal-server.json" \
    "${GRAFANA_DASHBOARDS}/temporal-server.json"
+cp "${METRICS_REPO}/metrics/dashboards/server/shard-io-concurrency.json" \
+   "${GRAFANA_DASHBOARDS}/shard-io-concurrency.json"
+cp "${METRICS_REPO}/metrics/dashboards/sdk/temporal-sdk-java-micrometer.json" \
+   "${GRAFANA_DASHBOARDS}/temporal-sdk-java-micrometer.json"
 
 # ---------------------------------------------------------------------------
 # 3. Copy alerts YAML with datasource UID substituted
@@ -58,6 +62,11 @@ echo "→ Deploying alert rules (datasourceUid: ${DS_UID})..."
 sed "s/datasourceUid: Prometheus/datasourceUid: ${DS_UID}/g" \
   "${METRICS_REPO}/metrics/alerts/server/temporal-server-alerts.yaml" \
   > "${GRAFANA_ALERTING}/temporal-server-essential.yaml"
+
+# SDK alert rules — Java Micrometer only (testing target)
+sed "s/datasourceUid: Prometheus/datasourceUid: ${DS_UID}/g" \
+  "${METRICS_REPO}/metrics/alerts/sdk/temporal-sdk-java-micrometer-alerts.yaml" \
+  > "${GRAFANA_ALERTING}/temporal-sdk-java-micrometer-alerts.yaml"
 
 # ---------------------------------------------------------------------------
 # 4. Reload Grafana provisioning (no restart needed)
