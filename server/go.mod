@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.99.1
 	github.com/temporalio/temporal-etcd-dynconfig v0.0.0-00010101000000-000000000000
 	github.com/urfave/cli/v2 v2.27.7
+	go.elastic.co/ecszap v1.0.3
 	go.temporal.io/api v1.62.8
 	go.temporal.io/server v0.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.27.1

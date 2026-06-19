@@ -26,6 +26,7 @@ import (
 	_ "go.temporal.io/server/common/persistence/sql/sqlplugin/postgresql"
 	_ "go.temporal.io/server/common/persistence/sql/sqlplugin/sqlite"
 	"go.temporal.io/server/temporal"
+	"go.elastic.co/ecszap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -41,20 +42,6 @@ func buildECSLogger(cfg log.Config) log.Logger {
 	var level zapcore.Level
 	_ = level.UnmarshalText([]byte(levelStr))
 
-	encCfg := zapcore.EncoderConfig{
-		TimeKey:        "@timestamp",
-		LevelKey:       "log.level",
-		NameKey:        "log.logger",
-		CallerKey:      "log.origin.file.name",
-		MessageKey:     "message",
-		StacktraceKey:  "error.stack_trace",
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeTime:     zapcore.ISO8601TimeEncoder,
-		EncodeDuration: zapcore.StringDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
-
 	var sink zapcore.WriteSyncer
 	if cfg.Stdout {
 		sink = zapcore.AddSync(os.Stdout)
@@ -62,11 +49,8 @@ func buildECSLogger(cfg log.Config) log.Logger {
 		sink = zapcore.AddSync(os.Stderr)
 	}
 
-	core := zapcore.NewCore(zapcore.NewJSONEncoder(encCfg), sink, zap.NewAtomicLevelAt(level))
-	zapLogger := zap.New(core,
-		zap.AddCaller(),
-		zap.Fields(zap.String("ecs.version", "1.6.0")),
-	)
+	core := ecszap.NewCore(ecszap.NewDefaultEncoderConfig(), sink, zap.NewAtomicLevelAt(level))
+	zapLogger := zap.New(core, zap.AddCaller())
 	return log.NewZapLogger(zapLogger)
 }
 
