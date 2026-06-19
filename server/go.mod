@@ -11,6 +11,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.7
 	go.temporal.io/api v1.62.8
 	go.temporal.io/server v0.0.0-00010101000000-000000000000
+	go.uber.org/zap v1.27.1
 	google.golang.org/grpc v1.80.0
 )
 

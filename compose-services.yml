@@ -104,7 +104,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - PROMETHEUS_ENDPOINT=0.0.0.0:8000
       - NUM_HISTORY_SHARDS=2048
@@ -156,7 +157,8 @@ services:
       - PROMETHEUS_ENDPOINT=0.0.0.0:8005
       - HISTORY_MEMBERSHIP_PORT=6934
       - HISTORY_GRPC_PORT=7238
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
       - ETCD_KEY_PREFIX=/temporal/dynamicconfig/
@@ -204,7 +206,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
       - ETCD_KEY_PREFIX=/temporal/dynamicconfig/
@@ -256,7 +259,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
       - ETCD_KEY_PREFIX=/temporal/dynamicconfig/
@@ -305,7 +309,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - FRONTEND_HTTP_PORT=7244
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
@@ -360,7 +365,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - FRONTEND_HTTP_PORT=7245
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
@@ -411,7 +417,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
       - ETCD_KEY_PREFIX=/temporal/dynamicconfig/
@@ -457,7 +464,8 @@ services:
       - USE_S3_ARCHIVAL=false
       - USE_MINIO_ARCHIVAL=${USE_MINIO_ARCHIVAL:-true}
       - TEMPORAL_SERVER_CONFIG_FILE_PATH=/etc/temporal/config/config_template.yaml
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
+      - TEMPORAL_LOG_FORMAT=zapjson
       - ENABLE_SECONDARY_VISIBILITY=true
       - ETCD_ENDPOINTS=temporal-etcd:2379
       - ETCD_KEY_PREFIX=/temporal/dynamicconfig/

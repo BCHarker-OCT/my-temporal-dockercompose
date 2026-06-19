@@ -26,7 +26,49 @@ import (
 	_ "go.temporal.io/server/common/persistence/sql/sqlplugin/postgresql"
 	_ "go.temporal.io/server/common/persistence/sql/sqlplugin/sqlite"
 	"go.temporal.io/server/temporal"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+// buildECSLogger returns a logger that emits ECS-compatible JSON.
+// Activated by setting TEMPORAL_LOG_FORMAT=ecs; otherwise the default Zap JSON logger is used.
+// ECS spec: https://www.elastic.co/guide/en/ecs/current/ecs-log.html
+func buildECSLogger(cfg log.Config) log.Logger {
+	levelStr := cfg.Level
+	if levelStr == "" {
+		levelStr = "info"
+	}
+	var level zapcore.Level
+	_ = level.UnmarshalText([]byte(levelStr))
+
+	encCfg := zapcore.EncoderConfig{
+		TimeKey:        "@timestamp",
+		LevelKey:       "log.level",
+		NameKey:        "log.logger",
+		CallerKey:      "log.origin.file.name",
+		MessageKey:     "message",
+		StacktraceKey:  "error.stack_trace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	var sink zapcore.WriteSyncer
+	if cfg.Stdout {
+		sink = zapcore.AddSync(os.Stdout)
+	} else {
+		sink = zapcore.AddSync(os.Stderr)
+	}
+
+	core := zapcore.NewCore(zapcore.NewJSONEncoder(encCfg), sink, zap.NewAtomicLevelAt(level))
+	zapLogger := zap.New(core,
+		zap.AddCaller(),
+		zap.Fields(zap.String("ecs.version", "1.6.0")),
+	)
+	return log.NewZapLogger(zapLogger)
+}
 
 func main() {
 	app := buildCLI()
@@ -196,7 +238,13 @@ func buildCLI() *cli.App {
 					return cli.Exit(fmt.Sprintf("Unable to load configuration: %v.", err), 1)
 				}
 
-				logger := log.NewZapLogger(log.BuildZapLogger(cfg.Log))
+				var logger log.Logger
+				switch os.Getenv("TEMPORAL_LOG_FORMAT") {
+				case "ecs":
+					logger = buildECSLogger(cfg.Log)
+				default: // "zapjson" or unset
+					logger = log.NewZapLogger(log.BuildZapLogger(cfg.Log))
+				}
 				logger.Info("Build info.",
 					tag.Time("git-time", build.InfoData.GitTime),
 					tag.String("git-revision", build.InfoData.GitRevision),
