@@ -13,7 +13,7 @@
   
 ## About
 
-This repo covers self-deploying Temporal server via Docker Compose and Swarm.
+This repo covers self-deploying Temporal server via Docker Compose.
 It serves as a reference for Docker-based deployment questions.
 
 > **Running on Kubernetes instead?** See [temporal-helm-superchart](https://github.com/tsurdilo/temporal-helm-superchart) for a self-contained Helm chart with the full observability stack, MinIO archival, and ConfigMap-based dynamic config.
