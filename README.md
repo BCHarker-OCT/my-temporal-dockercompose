@@ -1,15 +1,9 @@
-## Table of Contents
+# Temporal Dockerfile Cluster
 
-- [About](#about)
-- [Deploying your Temporal service on Docker](#deploying-your-service)
-- [Some useful Docker commands](#some-useful-docker-commands)
-- [Troubleshoot](#troubleshoot)
-- [Extra](#extra)
-  - [Dual Visibility](#dual-visibility)
-  - [Multi Cluster Replication setup](#multi-cluster-replication-setup)
-  - [Version Upgrades](#version-upgrades)
-  - [Plaintext Payload Interceptor](#plaintext-payload-interceptor)
-  - [MinIO Archival](#minio-archival)
+## 📋 Table of Contents
+
+<!--TOC-->
+<!--TOC-->
 
 ## About
 
@@ -102,11 +96,11 @@ Notes:
 
 First we need to install the loki plugin (you have to do this just one time)
 
-    docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+`docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions`
 
 Check if the plugin is installed:
 
-    docker plugin ls
+`docker plugin ls`
 
 (should see the Loki Logging Driver plugin installed
 
@@ -123,8 +117,8 @@ start with "--build":
 If you have already built the image and you didn't change the go code in /poller dir, then just run:
 
 ``` bash
-    docker network create temporal-network
-    docker compose -f compose-postgres.yml -f compose-services.yml up --detach
+docker network create temporal-network
+docker compose -f compose-postgres.yml -f compose-services.yml up --detach
 ```
 
 ## Check if it works
@@ -272,7 +266,6 @@ temporal-server --config /tmp render-config > /tmp/resolved.yaml && cat /tmp/res
 - [minio console](http://localhost:9011/login) (username: minioadmin passwd: minioadmin)
 - [cAdvisor](http://localhost:9092/docker) to monitor docker containers
 
-
 ### Custom docker template
 
 Docker server image by default use [this](https://github.com/temporalio/temporal/blob/master/docker/config_template.yaml) server config template.
@@ -288,10 +281,12 @@ when scraping their metric endpoints, for example [here](/deployment/prometheus/
 for the "temporal_system" namespace.
 
 ### Client access
+
 Envoy / HAProxy / NGINX role is exposed on 127.0.0.1:7233 (so all SDK samples should work w/o changes). It is load balancing the two
 Temporal frontend services defined in the docker compose.
 
 ### Envoy
+
 This sample uses Envoy load balancing by default. Check out the Envoy config file [here](/deployment/envoy/envoy.yaml) and make
 any necessary changes. Note this is just a demo so you might want to
 update the values where needed for your prod env.
@@ -299,6 +294,7 @@ Envoy pushes access logs to stdout and is picked up by loki, so can run
 all queries in Grafana. This includes grpc code and size and everything.
 
 ### HAProxy
+
 You can set up HAProxy load balancing if you want. It load balances
 our two frontend services. Check out the HAProxy config file [here](/deployment/haproxy/haproxy.cfg) and make
 any necessary changes. Note this is just a demo so you might want to
@@ -311,8 +307,9 @@ Pretty sure this has to do with some problem with the config, maybe someone coul
 look and fix.
 
 ### NGINX
+
 You can also have NGINX configured and use it for load balancing. It load balanced our two temporal frontend.
-Check out the NGINX config file [here](/deployment/nginx/nginx.conf) and make any necessary adjustments. This is just a demo remember and
+Check out the [NGINX config file](/deployment/nginx/nginx.conf) and make any necessary adjustments. This is just a demo remember and
 for production use you should make sure to update values where necessary.
 
 ## Some useful Docker commands
