@@ -52,7 +52,7 @@ The setup runs two instances (containers) for frontend, matching and history hos
 Service sets up 2K shards, so ~1K per history host.
 
 Each server role container exposes server metrics under its own port.
-Note that bashing into the admin-tools image also gives you access to tctl as well as the temporal-tools for different
+Note that bashing into the admin-tools image also gives you access to the temporal CLI tools for different
 dbs.
 
 ### How to start
@@ -115,39 +115,46 @@ calls DeepHealthCheck frontend api periodically which allows us to monitor our
 history services, and will allow us to emit the _host_health_ metric. To build it every time
 start with "--build":
 
-     docker network create temporal-network
-     docker compose -f compose-postgres.yml -f compose-services.yml up --build --detach
+```bash
+   docker network create temporal-network
+   docker compose -f compose-postgres.yml -f compose-services.yml up --build --detach
+```
 
+If you have already built the image and you didn't change the go code in /poller dir, then just run:
 
-If you have already built the image and you didnt change the go code in /poller dir, then just run:
-
+``` bash
     docker network create temporal-network
     docker compose -f compose-postgres.yml -f compose-services.yml up --detach
+```
 
 ## Check if it works
 
-### If you are running tctl locally
+### If you are running temporal CLI locally
 
-    tctl cl h
+Use `temporal` CLI commands below.
+
+ `temporal operator cluster health`
 
 should return "SERVING"
 
-### If you don't have tctl locally
+### If you don't have temporal CLI locally
 
-Bash into admin-tools container and run tctl (you can do this from your machine if you have tctl installed too)
+Bash into admin-tools container and run temporal CLI (you can do this from your machine if you have temporal CLI installed too)
 
-    docker container ls --format "table {{.ID}}\t{{.Image}}\t{{.Names}}"
+`docker container ls --format "table {{.ID}}\t{{.Image}}\t{{.Names}}"`
 
 copy the id of the temporal-admin-tools container
 
-    docker exec -it <admin tools container id> bash
-    tctl cl h
+```bash
+docker exec -it <admin tools container id> bash
+temporal operator cluster health
+```
 
 you should see response:
 
-    temporal.api.workflowservice.v1.WorkflowService: SERVING
+`temporal.api.workflowservice.v1.WorkflowService: SERVING`
 
-Note: if you set up HAProxy instead of default Envoy, and dont see "SERVING" but rather "context deadline exceeded errors"
+Note: if you set up HAProxy instead of default Envoy, and don't see "SERVING" but rather "context deadline exceeded errors"
 restart the "temporal-haproxy" container. Not yet sure why but haproxy is
 doing something weird. Once you restart it admin-tools container should be able to finish
 its setup-server script and things should work fine. If anyone can figure out the issue
@@ -157,8 +164,7 @@ We start postgres from a separate compose file but you don't have to and can com
 
 By the way, if you want to docker exec into the postgres container do:
 
-    docker exec -it <temporal-postgres container id> psql -U temporal
-    \l
+`docker exec -it <temporal-postgres container id> psql -U temporal \l`
 
 which should show the temporal and temporal_visiblity dbs
 
@@ -166,105 +172,111 @@ which should show the temporal and temporal_visiblity dbs
 
 In addition let's check out the rings in cluster:
 
-    tctl adm cl d
+`temporal operator cluster describe`
 
 You should see two members for frontend, matching and history service rings. One
-for the worker service (typically you dont need to scale worker service)
+for the worker service (typically you don't need to scale worker service)
 
 ### Health check service containers
 
-* Frontend (via grpcurl)
-```
+#### Frontend (via grpcurl)*
+
+```bash
 grpcurl -plaintext -d '{"service": "temporal.api.workflowservice.v1.WorkflowService"}' 127.0.0.1:7233 grpc.health.v1.Health/Check
 ```
 
-again you can just run `tctl cl h` too
+again you can just run `temporal operator cluster health` too
 
-* Frontend (via grpc-health-probe)
+#### Frontend (via grpc-health-probe)*
 
-```
+```bash
 grpc-health-probe -addr=localhost:7233 -service=temporal.api.workflowservice.v1.WorkflowService
 ```
 
 To check the two frontend services individually:
 
-```
+```bash
 grpc-health-probe -addr=localhost:7236 -service=temporal.api.workflowservice.v1.WorkflowService
 grpc-health-probe -addr=localhost:7237 -service=temporal.api.workflowservice.v1.WorkflowService
 ```
 
-* Internal Frontend (via grpc-health-probe)
-```
+#### Internal Frontend (via grpc-health-probe)
+
+```bash
 grpc-health-probe -addr=localhost:7233 -service=temporal.api.workflowservice.v1.WorkflowService
 ```
 
-* Matching (via grpc-health-probe)
+#### Matching (via grpc-health-probe)
 
-```
+```bash
 grpc-health-probe -addr=localhost:7235 -service=temporal.api.workflowservice.v1.MatchingService
 grpc-health-probe -addr=localhost:7239 -service=temporal.api.workflowservice.v1.MatchingService
 ```
 
-* History via grpc-health-probe)
+#### History (via grpc-health-probe)
 
-```
+```bash
 grpc-health-probe -addr=localhost:7234 -service=temporal.api.workflowservice.v1.HistoryService
 grpc-health-probe -addr=localhost:7238 -service=temporal.api.workflowservice.v1.HistoryService
 ```
 
 ### Http API
+
 Added support for HTTP api which became available since 1.22.0 server release
 to test you can do for example:
 
-```
+```bash
 curl http://localhost:7243/api/v1/namespaces/default
 ```
 
 once your service is up and running. For more info see [here](https://github.com/temporalio/api/blob/master/temporal/api/workflowservice/v1/service.proto)
 
 ### Parsing static config since server release 1.30
+
 Since server release 1.30 we need to fetch the embedded template and use that to display static config.
 It's no longer just created by dockerize in /etc/temporal/config/docker.yaml
 Can do something like this (change url to embedded config to reflect your server version so you get right
 embedded static config template)
 
-     wget -q -O /tmp/development.yaml \
-       https://raw.githubusercontent.com/temporalio/temporal/v1.31.0/common/config/config_template_embedded.yaml
+```bash
+wget -q -O /tmp/development.yaml \
+https://raw.githubusercontent.com/temporalio/temporal/v1.31.0/common/config/config_template_embedded.yaml
 
-     temporal-server --config /tmp render-config > /tmp/resolved.yaml && cat /tmp/resolved.yaml
+temporal-server --config /tmp render-config > /tmp/resolved.yaml && cat /tmp/resolved.yaml
+```
 
 ### Links
 
-* Server metrics (raw)
-  * [History Service1](http://localhost:8000/metrics)
-  * [History Service2](http://localhost:8005/metrics)
-  * [Matching Service1](http://localhost:8001/metrics)
-  * [Matching Service2](http://localhost:8006/metrics)
-  * [Frontend Service1](http://localhost:8002/metrics)
-  * [Frontend Service2](http://localhost:8004/metrics)
-  * [Internal Frontend](http://localhost:8007/metrics)
-  * [Worker Service](http://localhost:8003/metrics)
-* [Prometheus targets (scrape points)](http://localhost:9090/targets)
-* [Grafana (includes server, sdk, docker, and postgres dashboards)](http://localhost:8085/)
-  * No login required
-  * In order to scrape docker system metrics add "metrics-addr":"127.0.0.1:9323" to your docker daemon.js, on Mac this is located at ~/.docker/daemon.json
-  * Go to "Explore" and select Loki data source to run LogQL against server metrics
-* [Web UI v2](http://localhost:8080/namespaces/default/workflows)
-* [Web UI v1](http://localhost:8088/)
-* [Portainer](http://localhost:9000/)
-  * Note you will have to create an user the first time you log in
-  * Yes it forces a longer password but whatever
-* [Jaeger](http://localhost:16686/) - includes server grpc traces
-* [PgAdmin](http://localhost:5050/) (username: pgadmin4@pgadmin.org passwd: admin)
-* [etcd keeper](http://localhost:8086/etcdkeeper/)
-* [minio console](http://localhost:9011/login) (username: minioadmin passwd: minioadmin)
-* [cAdvisor](http://localhost:9092/docker) to monitor docker containers
+- Server metrics (raw)
+  - [History Service1](http://localhost:8000/metrics)
+  - [History Service2](http://localhost:8005/metrics)
+  - [Matching Service1](http://localhost:8001/metrics)
+  - [Matching Service2](http://localhost:8006/metrics)
+  - [Frontend Service1](http://localhost:8002/metrics)
+  - [Frontend Service2](http://localhost:8004/metrics)
+  - [Internal Frontend](http://localhost:8007/metrics)
+  - [Worker Service](http://localhost:8003/metrics)
+- [Prometheus targets (scrape points)](http://localhost:9090/targets)
+- [Grafana (includes server, sdk, docker, and postgres dashboards)](http://localhost:8085/)
+  - No login required
+  - In order to scrape docker system metrics add "metrics-addr":"127.0.0.1:9323" to your docker daemon.js, on Mac this is located at ~/.docker/daemon.json
+  - Go to "Explore" and select Loki data source to run LogQL against server metrics
+- [Web UI v2](http://localhost:8080/namespaces/default/workflows)
+- [Web UI v1](http://localhost:8088/)
+- [Portainer](http://localhost:9000/)
+  - Note you will have to create an user the first time you log in
+  - Yes it forces a longer password but whatever
+- [Jaeger](http://localhost:16686/) - includes server grpc traces
+- [PgAdmin](http://localhost:5050/) (username: pgadmin4@pgadmin.org passwd: admin)
+- [etcd keeper](http://localhost:8086/etcdkeeper/)
+- [minio console](http://localhost:9011/login) (username: minioadmin passwd: minioadmin)
+- [cAdvisor](http://localhost:9092/docker) to monitor docker containers
 
 
 ### Custom docker template
 
 Docker server image by default use [this](https://github.com/temporalio/temporal/blob/master/docker/config_template.yaml) server config template.
-This is a base template that may not fit everyones needs. You an define your custom configuration template if you wish
+This is a base template that may not fit everyone's needs. You an define your custom configuration template if you wish
 and this is what we are doing via [my_config_template.yaml](template/my_config_template.yaml).
 With this you can customize the template as you wish, for example you could configure env vars for namespace setup, like set up
 s3 archival etc which is not possible with the default template.
@@ -299,11 +311,13 @@ Pretty sure this has to do with some problem with the config, maybe someone coul
 look and fix.
 
 ### NGINX
-You can also have NGINX configured and use it for load balancing. It load balanced our two temporal frontends.
+You can also have NGINX configured and use it for load balancing. It load balanced our two temporal frontend.
 Check out the NGINX config file [here](/deployment/nginx/nginx.conf) and make any necessary adjustments. This is just a demo remember and
 for production use you should make sure to update values where necessary.
 
 ## Some useful Docker commands
+
+```bash
     docker-compose down --volumes
     docker system prune -a
     docker volume prune
@@ -329,14 +343,15 @@ for production use you should make sure to update values where necessary.
       temporal-internal-frontend \
       temporal-worker
     docker compose -f compose-postgres.yml -f compose-services.yml up --detach
-
+```
 
 ## Troubleshoot
 
-* "Not enough hosts to serve the request"
-  * Can happen on startup when some temporal service container did not start up properly, run the docker compose command again typically fixes this
+- "Not enough hosts to serve the request"
+  - Can happen on startup when some temporal service container did not start up properly, run the docker compose command again typically fixes this
 
 ## Extra
+
 Here are some extra configurations, try them out and please report any errors.
 
 ## Dual Visibility
@@ -352,19 +367,23 @@ to 3 completely separate envs (recommended).
 
 The key dynamic config setting for dual visibility is to enable writes to both primary and secondary vis:
 
+```yaml
       system.secondaryVisibilityWritingMode:
         - value: "dual"
           constraints: {}
       system.enableReadFromSecondaryVisibility:
         - value: false
           constraints: {}
+```
 
 This sets up Temporal to write visibility data to both primary and secondary vis stores.
 Let's say you run into issues on this primary store, via dynamic config again you can switch read to secondary
 
+```yaml
       system.enableReadFromSecondaryVisibility:
         - value: true
           constraints: {}
+```
 
 If you experience complete outage of primary vis store, you can change your static config as needed and then
 again look at your dynamic config to write to primary and-or secondary as again needed.
@@ -377,11 +396,11 @@ Covers: start two clusters → connect them → promote a namespace to global �
 
 ### Phase 1 — Start the clusters
 
-**1. Clear your Docker environment** (see [Some useful Docker commands](#some-useful-docker-commands))
+#### 1. Clear your Docker environment (see [Some useful Docker commands](#some-useful-docker-commands))
 
 Stop the single-cluster stack first if it is running. The replication setup expects c1 on `127.0.0.1:7233` and c2 on `127.0.0.1:2233`.
 
-**2. Create the network and start both clusters**
+#### 2. Create the network and start both clusters
 
 ```bash
 docker network create temporal-network-replication
@@ -396,14 +415,14 @@ docker volume prune -f
 docker compose -f compose-services-replication.yml up --detach
 ```
 
-**3. Verify both clusters are healthy**
+#### 3. Verify both clusters are healthy
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster health
 temporal --address 127.0.0.1:2233 operator cluster health
 ```
 
-**4. Confirm cluster names**
+#### 4. Confirm cluster names
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster describe -o json | jq .clusterName
@@ -413,7 +432,7 @@ temporal --address 127.0.0.1:2233 operator cluster describe -o json | jq .cluste
 # expected: "c2"
 ```
 
-**5. Get container IPs** — needed for the upsert commands in Phase 3
+#### 5. Get container IPs** — needed for the upsert commands in Phase 3
 
 ```bash
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' temporalc1
@@ -426,23 +445,23 @@ Note these as `TEMPORALC1_IP` and `TEMPORALC2_IP`.
 
 ### Phase 2 — Seed workflows on c1
 
-**6. Create the test namespace on c1**
+#### 6. Create the test namespace on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace create replicationtest
 ```
 
-**7. Start sample workflows**
+#### 7. Start sample workflows
 
 Run a mix of short (completing) and long-running workflows so you can see both completed and running executions replicate. This Java sample creates 30 executions — 20 complete, 10 remain running:
 
 https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c
 
-**8. Verify workflows are on c1**
+#### 8. Verify workflows are on c1
 
 http://localhost:8081/namespaces/replicationtest/workflows
 
-**9. Confirm namespace does not exist on c2 yet**
+#### 9. Confirm namespace does not exist on c2 yet
 
 http://localhost:8082/namespaces/replicationtest/workflows
 
@@ -452,7 +471,7 @@ http://localhost:8082/namespaces/replicationtest/workflows
 
 Each cluster stores its own peer registry locally — both directions must be run independently.
 
-**10. Register c2 as a peer on c1**
+#### 10. Register c2 as a peer on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster upsert \
@@ -461,7 +480,7 @@ temporal --address 127.0.0.1:7233 operator cluster upsert \
   --frontend-address "TEMPORALC2_IP:2233"
 ```
 
-**11. Register c1 as a peer on c2**
+#### 11. Register c1 as a peer on c2
 
 ```bash
 temporal --address 127.0.0.1:2233 operator cluster upsert \
@@ -470,7 +489,7 @@ temporal --address 127.0.0.1:2233 operator cluster upsert \
   --frontend-address "TEMPORALC1_IP:7233"
 ```
 
-**12. Verify both clusters see each other**
+#### 12. Verify both clusters see each other
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster list
@@ -481,7 +500,7 @@ temporal --address 127.0.0.1:2233 operator cluster list
 
 ### Phase 4 — Promote namespace to global and enable replication
 
-**13. Promote `replicationtest` from local to global namespace**
+#### 13. Promote `replicationtest` from local to global namespace
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace update \
@@ -489,7 +508,7 @@ temporal --address 127.0.0.1:7233 operator namespace update \
   --promote-global
 ```
 
-**14. Verify it is now a global namespace**
+#### 14. Verify it is now a global namespace
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe \
@@ -497,7 +516,7 @@ temporal --address 127.0.0.1:7233 operator namespace describe \
 # expected: true
 ```
 
-**15. Add both clusters to the namespace replication config**
+#### 15. Add both clusters to the namespace replication config
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace update \
@@ -506,14 +525,14 @@ temporal --address 127.0.0.1:7233 operator namespace update \
   --cluster c2
 ```
 
-**16. Verify replication config shows both clusters**
+#### 16. Verify replication config shows both clusters
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe \
   --namespace replicationtest -o json | jq .replicationConfig
 ```
 
-**17. Confirm namespace now exists on c2**
+#### 17. Confirm namespace now exists on c2
 
 http://localhost:8082/namespaces/replicationtest/workflows
 
@@ -525,7 +544,7 @@ No workflows yet — the namespace was replicated but existing executions are no
 
 New executions started after step 15 replicate automatically. The 30 existing executions on c1 need to be force-replicated.
 
-**18. Start the force-replication system workflow on c1**
+#### 18. Start the force-replication system workflow on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 workflow start \
@@ -535,11 +554,11 @@ temporal --address 127.0.0.1:7233 workflow start \
   --input '{"Namespace": "replicationtest", "ConcurrentActivityCount": 4, "OverallRps": 80}'
 ```
 
-**19. Monitor until complete**
+#### 19. Monitor until complete
 
 http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22
 
-**20. Verify all executions are on c2**
+#### 20. Verify all executions are on c2
 
 http://localhost:8082/namespaces/replicationtest/workflows
 
@@ -551,7 +570,7 @@ Expected: 20 completed and 10 running executions.
 
 `namespace-handover` is a safe failover — it waits for replication lag to drain before flipping the active cluster, unlike a direct namespace update.
 
-**21. Run the namespace-handover system workflow on c1**
+#### 21. Run the namespace-handover system workflow on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 workflow start \
@@ -561,7 +580,7 @@ temporal --address 127.0.0.1:7233 workflow start \
   --input '{"Namespace": "replicationtest", "RemoteCluster": "c2", "AllowedLaggingSeconds": 120, "HandoverTimeoutSeconds": 5}'
 ```
 
-**22. Verify active cluster is now c2**
+#### 22. Verify active cluster is now c2
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe replicationtest \
@@ -571,7 +590,7 @@ temporal --address 127.0.0.1:7233 operator namespace describe replicationtest \
 
 > **Note:** If this still shows `"c1"` immediately after the handover workflow completes, wait up to 60 seconds and retry. The namespace registry on each server polls for changes on a 60s interval (`dynamicConfigClient.pollInterval`). The handover itself is done — the cache just hasn't refreshed yet.
 
-**23. Switch clients and workers to c2**
+#### 23. Switch clients and workers to c2
 
 Point your SDK workers and clients at `127.0.0.1:2233`. Both clusters have `dcRedirectionPolicy: all-apis-forwarding`, so signals and starts sent to c1 will continue to be forwarded to c2 in the interim — but workers polling c1 will also be forwarded. Stop c1 workers before or immediately after switching DNS/addresses to avoid c1 workers picking up tasks meant for c2.
 
@@ -597,7 +616,7 @@ Point your SDK workers and clients at `127.0.0.1:2233`. Both clusters have `dcRe
 
 ### Phase 7 — Decommission c1
 
-**24. Remove c1 from the namespace replication config**
+#### 24. Remove c1 from the namespace replication config
 
 ```bash
 temporal --address 127.0.0.1:2233 operator namespace update \
@@ -605,39 +624,39 @@ temporal --address 127.0.0.1:2233 operator namespace update \
   --cluster c2
 ```
 
-**25. Verify only c2 remains in replication config**
+#### 25. Verify only c2 remains in replication config
 
 ```bash
 temporal --address 127.0.0.1:2233 operator namespace describe \
   --namespace replicationtest -o json | jq .replicationConfig
 ```
 
-**26. Delete the namespace on c1**
+#### 26. Delete the namespace on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace delete \
   --namespace replicationtest
 ```
 
-**27. Verify namespace is gone from c1, still present on c2**
+#### 27. Verify namespace is gone from c1, still present on c2
 
 - http://localhost:8081/namespaces/replicationtest — should 404
 - http://localhost:8082/namespaces/replicationtest — should load
 
-**28. Disconnect the clusters**
+#### 28. Disconnect the clusters
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster remove --name c2
 temporal --address 127.0.0.1:2233 operator cluster remove --name c1
 ```
 
-**29. Verify c2 no longer references c1**
+#### 29. Verify c2 no longer references c1
 
 ```bash
 temporal --address 127.0.0.1:2233 operator cluster describe -o json
 ```
 
-**30. Complete running executions on c2**
+#### 30. Complete running executions on c2
 
 If you used the Java sample from Phase 2, run the worker pointed at c2 to pick up and complete the 10 running executions:
 
@@ -687,7 +706,7 @@ git checkout v1.32.0   # replace with target version
 
 In `.env`, set `TEMPORAL_ADMINTOOLS_IMG` to the target version:
 
-```
+```bash
 TEMPORAL_ADMINTOOLS_IMG=1.32.0
 ```
 
