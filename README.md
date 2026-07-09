@@ -2,7 +2,7 @@
 
 - [About](#about)
 - [Deploying your Temporal service on Docker](#deploying-your-service)
-- [Some usueful Docker commands](#some-useful-docker-commands)
+- [Some useful Docker commands](#some-useful-docker-commands)
 - [Troubleshoot](#troubleshoot)
 - [Extra](#extra)
   - [Dual Visibility](#dual-visibility)
@@ -10,20 +10,20 @@
   - [Version Upgrades](#version-upgrades)
   - [Plaintext Payload Interceptor](#plaintext-payload-interceptor)
   - [MinIO Archival](#minio-archival)
-  
+
 ## About
 
 This repo covers self-deploying Temporal server via Docker Compose.
 It serves as a reference for Docker-based deployment questions.
 
 > **Running on Kubernetes instead?** See [temporal-helm-superchart](https://github.com/tsurdilo/temporal-helm-superchart) for a self-contained Helm chart with the full observability stack, MinIO archival, and ConfigMap-based dynamic config.
-For this repo we use PostgreSQL for persistence for temporal db. We set up 
+For this repo we use PostgreSQL for persistence for temporal db. We set up
 advanced visibility with Postgres DB (but options with OpenSearch /  ElasticSearch are possible) for temporal_visibility.
 It also shows how to set up internal frontend service and use by worker service (even tho we do not set up yet
 custom authorizer/claims mapper).
-It also shows how to set up server grpc tracing with otel collector and can be visualized with Jaeger. 
+It also shows how to set up server grpc tracing with otel collector and can be visualized with Jaeger.
 
-In addition it has a out of box sample of setting up multi cluster replication and some cli commands 
+In addition it has a out of box sample of setting up multi cluster replication and some cli commands
 to get it up and running locally.
 
 ### Dynamic config
@@ -47,15 +47,58 @@ See the [temporal-etcd-dynconfig](https://github.com/tsurdilo/temporal-etcd-dync
 ## Deploying your service
 
 This setup targets more of production environments as it deploys each Temporal server role
-(frontend, matching, history, worker) in individual containers. 
+(frontend, matching, history, worker) in individual containers.
 The setup runs two instances (containers) for frontend, matching and history hosts.
 Service sets up 2K shards, so ~1K per history host.
 
 Each server role container exposes server metrics under its own port.
 Note that bashing into the admin-tools image also gives you access to tctl as well as the temporal-tools for different
-dbs. 
+dbs.
 
 ### How to start
+
+### Using startup.sh (recommended)
+
+Use the helper script to handle setup, startup, shutdown, and quick status checks.
+
+One-time prerequisites for custom server build sources:
+
+```bash
+git clone https://github.com/temporalio/temporal.git ~/devel/temporal/temporal
+git clone https://github.com/tsurdilo/temporal-etcd-dynconfig.git ~/devel/temporal-etcd-dynconfig
+```
+
+Run setup once (or any time you want to re-validate local prerequisites):
+
+```bash
+./startup.sh setup
+```
+
+Start full stack:
+
+```bash
+./startup.sh up
+```
+
+Check container status:
+
+```bash
+./startup.sh status
+```
+
+Stop stack:
+
+```bash
+./startup.sh down
+```
+
+Notes:
+
+- `setup` validates Loki plugin, local directories, and docker network, then prints `Setup complete.`
+- `up` runs setup steps, starts services, then prints current `docker compose ps` status.
+- `status` is read-only and safe to run anytime.
+
+### Manual docker compose flow
 
 First we need to install the loki plugin (you have to do this just one time)
 
@@ -68,9 +111,9 @@ Check if the plugin is installed:
 (should see the Loki Logging Driver plugin installed
 
 Repo contains a "poller" docker image that needs to be built the first time. This image
-calls DeepHealthCheck frontend api periodically which allows us to monitor our 
+calls DeepHealthCheck frontend api periodically which allows us to monitor our
 history services, and will allow us to emit the _host_health_ metric. To build it every time
-start with "--build": 
+start with "--build":
 
      docker network create temporal-network
      docker compose -f compose-postgres.yml -f compose-services.yml up --build --detach
@@ -97,7 +140,7 @@ Bash into admin-tools container and run tctl (you can do this from your machine 
 
 copy the id of the temporal-admin-tools container
 
-    docker exec -it <admin tools container id> bash 
+    docker exec -it <admin tools container id> bash
     tctl cl h
 
 you should see response:
@@ -105,9 +148,9 @@ you should see response:
     temporal.api.workflowservice.v1.WorkflowService: SERVING
 
 Note: if you set up HAProxy instead of default Envoy, and dont see "SERVING" but rather "context deadline exceeded errors"
-restart the "temporal-haproxy" container. Not yet sure why but haproxy is 
+restart the "temporal-haproxy" container. Not yet sure why but haproxy is
 doing something weird. Once you restart it admin-tools container should be able to finish
-its setup-server script and things should work fine. If anyone can figure out the issue 
+its setup-server script and things should work fine. If anyone can figure out the issue
 please commit PR. Thanks.
 
 We start postgres from a separate compose file but you don't have to and can combine them if you want.
@@ -125,7 +168,7 @@ In addition let's check out the rings in cluster:
 
     tctl adm cl d
 
-You should see two members for frontend, matching and history service rings. One 
+You should see two members for frontend, matching and history service rings. One
 for the worker service (typically you dont need to scale worker service)
 
 ### Health check service containers
@@ -182,7 +225,7 @@ once your service is up and running. For more info see [here](https://github.com
 ### Parsing static config since server release 1.30
 Since server release 1.30 we need to fetch the embedded template and use that to display static config.
 It's no longer just created by dockerize in /etc/temporal/config/docker.yaml
-Can do something like this (change url to embedded config to reflect your server version so you get right 
+Can do something like this (change url to embedded config to reflect your server version so you get right
 embedded static config template)
 
      wget -q -O /tmp/development.yaml \
@@ -215,7 +258,7 @@ embedded static config template)
 * [PgAdmin](http://localhost:5050/) (username: pgadmin4@pgadmin.org passwd: admin)
 * [etcd keeper](http://localhost:8086/etcdkeeper/)
 * [minio console](http://localhost:9011/login) (username: minioadmin passwd: minioadmin)
-* [cAdvisor](http://localhost:9092/docker) to monitor docker containers 
+* [cAdvisor](http://localhost:9092/docker) to monitor docker containers
 
 
 ### Custom docker template
@@ -223,14 +266,14 @@ embedded static config template)
 Docker server image by default use [this](https://github.com/temporalio/temporal/blob/master/docker/config_template.yaml) server config template.
 This is a base template that may not fit everyones needs. You an define your custom configuration template if you wish
 and this is what we are doing via [my_config_template.yaml](template/my_config_template.yaml).
-With this you can customize the template as you wish, for example you could configure env vars for namespace setup, like set up 
+With this you can customize the template as you wish, for example you could configure env vars for namespace setup, like set up
 s3 archival etc which is not possible with the default template.
 
-### Exclude metrics 
+### Exclude metrics
 
-This demo also shows how to exclude certain metrics produced by Temporal services 
-when scraping their metric endpoints, for example [here](/deployment/prometheus/config.yml) we drop all metrics 
-for the "temporal_system" namespace. 
+This demo also shows how to exclude certain metrics produced by Temporal services
+when scraping their metric endpoints, for example [here](/deployment/prometheus/config.yml) we drop all metrics
+for the "temporal_system" namespace.
 
 ### Client access
 Envoy / HAProxy / NGINX role is exposed on 127.0.0.1:7233 (so all SDK samples should work w/o changes). It is load balancing the two
@@ -246,18 +289,18 @@ all queries in Grafana. This includes grpc code and size and everything.
 ### HAProxy
 You can set up HAProxy load balancing if you want. It load balances
 our two frontend services. Check out the HAProxy config file [here](/deployment/haproxy/haproxy.cfg) and make
-any necessary changes. Note this is just a demo so you might want to 
+any necessary changes. Note this is just a demo so you might want to
 update the values where needed for your prod env.
 
 I have ran into some issues with this HAProxy setup, specifically
 sometimes having to restart its container in order for admin-tools to be able to complete
 setup, as well as for executions first workflow task timing out.
-Pretty sure this has to do with some problem with the config, maybe someone could 
-look and fix. 
+Pretty sure this has to do with some problem with the config, maybe someone could
+look and fix.
 
 ### NGINX
 You can also have NGINX configured and use it for load balancing. It load balanced our two temporal frontends.
-Check out the NGINX config file [here](/deployment/nginx/nginx.conf) and make any necessary adjustments. This is just a demo remember and 
+Check out the NGINX config file [here](/deployment/nginx/nginx.conf) and make any necessary adjustments. This is just a demo remember and
 for production use you should make sure to update values where necessary.
 
 ## Some useful Docker commands
@@ -298,14 +341,14 @@ Here are some extra configurations, try them out and please report any errors.
 
 ## Dual Visibility
 
-Dual visibility allows you to configure a secondary visibility store. 
+Dual visibility allows you to configure a secondary visibility store.
 One use case of having dual visibility is if you need to migrate from one store to another or switch to secondary store
 in case of failures on primary one. This is typically what you want to do in a production env.
 
 In this sample we set up dual visibility for our SQL visibility setup (Postgres).
-Please note that we set this up on the same db instance. This demo uses a single postgres to set up 
+Please note that we set this up on the same db instance. This demo uses a single postgres to set up
 all dbs, primary, visibility, and secondary visibility. For a prod env you might want to separate these
-to 3 completely separate envs (recommended). 
+to 3 completely separate envs (recommended).
 
 The key dynamic config setting for dual visibility is to enable writes to both primary and secondary vis:
 
@@ -316,7 +359,7 @@ The key dynamic config setting for dual visibility is to enable writes to both p
         - value: false
           constraints: {}
 
-This sets up Temporal to write visibility data to both primary and secondary vis stores. 
+This sets up Temporal to write visibility data to both primary and secondary vis stores.
 Let's say you run into issues on this primary store, via dynamic config again you can switch read to secondary
 
       system.enableReadFromSecondaryVisibility:

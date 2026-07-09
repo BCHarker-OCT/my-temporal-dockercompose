@@ -114,7 +114,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7234
@@ -165,7 +165,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7238
@@ -214,7 +214,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7235
@@ -267,7 +267,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7249
@@ -318,7 +318,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7237
@@ -374,7 +374,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7236
@@ -425,7 +425,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7231
@@ -472,7 +472,7 @@ services:
       - ETCD_CLIENT_NAME=temporal-server
       - ETCD_DISABLE_TLS=true
     build:
-      context: /Users/tsurdilo/devel
+      context: ${HOME}/devel
       dockerfile: my-temporal-dockercompose/Dockerfile
     ports:
       - published: 7232

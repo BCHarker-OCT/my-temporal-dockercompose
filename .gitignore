@@ -33,3 +33,6 @@ nb-configuration.xml
 # Local dev workspace (redirects Docker module paths to local checkouts)
 server/go.work
 server/go.work.sum
+
+# Docker runtime data
+portainer-data/

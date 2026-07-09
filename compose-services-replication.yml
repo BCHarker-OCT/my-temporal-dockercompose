@@ -4,7 +4,7 @@ services:
 
   postgresqlc1:
     container_name: temporal-postgresql-c1
-    image: postgres:13
+    image: postgres:16
     command: postgres -c 'max_connections=200'
     environment:
       POSTGRES_PASSWORD: temporal
@@ -99,7 +99,7 @@ services:
 
   postgresqlc2:
     container_name: temporal-postgresql-c2
-    image: postgres:13
+    image: postgres:16
     command: postgres -c 'max_connections=200'
     environment:
       POSTGRES_PASSWORD: temporal
