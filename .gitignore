@@ -36,3 +36,6 @@ server/go.work.sum
 
 # Docker runtime data
 portainer-data/
+
+# Ignore Log files
+*.log

@@ -379,10 +379,20 @@ Covers: start two clusters → connect them → promote a namespace to global �
 
 **1. Clear your Docker environment** (see [Some useful Docker commands](#some-useful-docker-commands))
 
+Stop the single-cluster stack first if it is running. The replication setup expects c1 on `127.0.0.1:7233` and c2 on `127.0.0.1:2233`.
+
 **2. Create the network and start both clusters**
 
 ```bash
 docker network create temporal-network-replication
+docker compose -f compose-services-replication.yml up --detach
+```
+
+If you have run the replication setup before with different cluster metadata, remove the old containers and volumes before starting again:
+
+```bash
+docker compose -f compose-services-replication.yml down -v
+docker volume prune -f
 docker compose -f compose-services-replication.yml up --detach
 ```
 
