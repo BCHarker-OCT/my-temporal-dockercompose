@@ -72,7 +72,7 @@ Usage: ./startup.sh [OPTION]
 Options:
   up       Start services (default)
   down     Stop services
-	status   Show container status
+  status   Show container status
   setup    Run setup only (plugin, dirs, network)
   help     Show this help
 EOF
