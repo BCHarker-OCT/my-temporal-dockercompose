@@ -16,8 +16,8 @@
     - [If you are running temporal CLI locally](#if-you-are-running-temporal-cli-locally)
     - [If you don't have temporal CLI locally](#if-you-dont-have-temporal-cli-locally)
     - [Health check service containers](#health-check-service-containers)
-      - [Frontend (via grpcurl)*](#frontend-via-grpcurl)
-      - [Frontend (via grpc-health-probe)*](#frontend-via-grpc-health-probe)
+      - [Frontend (via grpcurl)](#frontend-via-grpcurl)
+      - [Frontend (via grpc-health-probe)](#frontend-via-grpc-health-probe)
       - [Internal Frontend (via grpc-health-probe)](#internal-frontend-via-grpc-health-probe)
       - [Matching (via grpc-health-probe)](#matching-via-grpc-health-probe)
       - [History (via grpc-health-probe)](#history-via-grpc-health-probe)
@@ -40,7 +40,7 @@
       - [2. Create the network and start both clusters](#2-create-the-network-and-start-both-clusters)
       - [3. Verify both clusters are healthy](#3-verify-both-clusters-are-healthy)
       - [4. Confirm cluster names](#4-confirm-cluster-names)
-      - [5. Get container IPs** — needed for the upsert commands in Phase 3](#5-get-container-ips--needed-for-the-upsert-commands-in-phase-3)
+      - [5. Get container IPs — needed for the upsert commands in Phase 3](#5-get-container-ips--needed-for-the-upsert-commands-in-phase-3)
     - [Phase 2 — Seed workflows on c1](#phase-2--seed-workflows-on-c1)
       - [6. Create the test namespace on c1](#6-create-the-test-namespace-on-c1)
       - [7. Start sample workflows](#7-start-sample-workflows)
@@ -258,7 +258,7 @@ for the worker service (typically you don't need to scale worker service)
 
 ### Health check service containers
 
-#### Frontend (via grpcurl)*
+#### Frontend (via grpcurl)
 
 ```bash
 grpcurl -plaintext -d '{"service": "temporal.api.workflowservice.v1.WorkflowService"}' 127.0.0.1:7233 grpc.health.v1.Health/Check
@@ -266,7 +266,7 @@ grpcurl -plaintext -d '{"service": "temporal.api.workflowservice.v1.WorkflowServ
 
 again you can just run `temporal operator cluster health` too
 
-#### Frontend (via grpc-health-probe)*
+#### Frontend (via grpc-health-probe)
 
 ```bash
 grpc-health-probe -addr=localhost:7233 -service=temporal.api.workflowservice.v1.WorkflowService
@@ -308,7 +308,7 @@ to test you can do for example:
 curl http://localhost:7243/api/v1/namespaces/default
 ```
 
-once your service is up and running. For more info see [here](https://github.com/temporalio/api/blob/master/temporal/api/workflowservice/v1/service.proto)
+once your service is up and running. For more info see [HTTP API](https://github.com/temporalio/api/blob/master/temporal/api/workflowservice/v1/service.proto)
 
 ### Parsing static config since server release 1.30
 
@@ -514,7 +514,7 @@ temporal --address 127.0.0.1:2233 operator cluster describe -o json | jq .cluste
 # expected: "c2"
 ```
 
-#### 5. Get container IPs** — needed for the upsert commands in Phase 3
+#### 5. Get container IPs — needed for the upsert commands in Phase 3
 
 ```bash
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' temporalc1
@@ -535,17 +535,20 @@ temporal --address 127.0.0.1:7233 operator namespace create replicationtest
 
 #### 7. Start sample workflows
 
+> [!NOTE]
+> A workflow is created and documented in this Repo to work through this [replicationtest workflow](./workflow-examples/README.md)
+
 Run a mix of short (completing) and long-running workflows so you can see both completed and running executions replicate. This Java sample creates 30 executions — 20 complete, 10 remain running:
 
-https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c
+[https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c](https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c) (or see above as this is Java)
 
 #### 8. Verify workflows are on c1
 
-http://localhost:8081/namespaces/replicationtest/workflows
+[http://localhost:8081/namespaces/replicationtest/workflows](http://localhost:8081/namespaces/replicationtest/workflows)
 
 #### 9. Confirm namespace does not exist on c2 yet
 
-http://localhost:8082/namespaces/replicationtest/workflows
+[http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
 ---
 
@@ -616,7 +619,7 @@ temporal --address 127.0.0.1:7233 operator namespace describe \
 
 #### 17. Confirm namespace now exists on c2
 
-http://localhost:8082/namespaces/replicationtest/workflows
+[http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
 No workflows yet — the namespace was replicated but existing executions are not backfilled automatically.
 
@@ -638,11 +641,11 @@ temporal --address 127.0.0.1:7233 workflow start \
 
 #### 19. Monitor until complete
 
-http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22
+[http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22](http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22)
 
 #### 20. Verify all executions are on c2
 
-http://localhost:8082/namespaces/replicationtest/workflows
+[http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
 Expected: 20 completed and 10 running executions.
 
@@ -742,7 +745,7 @@ temporal --address 127.0.0.1:2233 operator cluster describe -o json
 
 If you used the Java sample from Phase 2, run the worker pointed at c2 to pick up and complete the 10 running executions:
 
-https://gist.github.com/tsurdilo/4114521b617016b5a5872ebf50e1494b
+[https://gist.github.com/tsurdilo/4114521b617016b5a5872ebf50e1494b](https://gist.github.com/tsurdilo/4114521b617016b5a5872ebf50e1494b)
 
 c1 can now be decommissioned.
 
