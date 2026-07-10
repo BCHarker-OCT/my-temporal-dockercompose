@@ -36,52 +36,14 @@
   - [Dual Visibility](#dual-visibility)
   - [Multi Cluster Replication Setup](#multi-cluster-replication-setup)
     - [Phase 1 — Start the clusters](#phase-1--start-the-clusters)
-      - [1. Clear your Docker environment (see Some useful Docker commands)](#1-clear-your-docker-environment-see-some-useful-docker-commands)
-      - [2. Create the network and start both clusters](#2-create-the-network-and-start-both-clusters)
-      - [3. Verify both clusters are healthy](#3-verify-both-clusters-are-healthy)
-      - [4. Confirm cluster names](#4-confirm-cluster-names)
-      - [5. Get container IPs — needed for the upsert commands in Phase 3](#5-get-container-ips--needed-for-the-upsert-commands-in-phase-3)
     - [Phase 2 — Seed workflows on c1](#phase-2--seed-workflows-on-c1)
-      - [6. Create the test namespace on c1](#6-create-the-test-namespace-on-c1)
-      - [7. Start sample workflows](#7-start-sample-workflows)
-      - [8. Verify workflows are on c1](#8-verify-workflows-are-on-c1)
-      - [9. Confirm namespace does not exist on c2 yet](#9-confirm-namespace-does-not-exist-on-c2-yet)
     - [Phase 3 — Connect the clusters](#phase-3--connect-the-clusters)
-      - [10. Register c2 as a peer on c1](#10-register-c2-as-a-peer-on-c1)
-      - [11. Register c1 as a peer on c2](#11-register-c1-as-a-peer-on-c2)
-      - [12. Verify both clusters see each other](#12-verify-both-clusters-see-each-other)
     - [Phase 4 — Promote namespace to global and enable replication](#phase-4--promote-namespace-to-global-and-enable-replication)
-      - [13. Promote `replicationtest` from local to global namespace](#13-promote-replicationtest-from-local-to-global-namespace)
-      - [14. Verify it is now a global namespace](#14-verify-it-is-now-a-global-namespace)
-      - [15. Add both clusters to the namespace replication config](#15-add-both-clusters-to-the-namespace-replication-config)
-      - [16. Verify replication config shows both clusters](#16-verify-replication-config-shows-both-clusters)
-      - [17. Confirm namespace now exists on c2](#17-confirm-namespace-now-exists-on-c2)
     - [Phase 5 — Backfill existing executions](#phase-5--backfill-existing-executions)
-      - [18. Start the force-replication system workflow on c1](#18-start-the-force-replication-system-workflow-on-c1)
-      - [19. Monitor until complete](#19-monitor-until-complete)
-      - [20. Verify all executions are on c2](#20-verify-all-executions-are-on-c2)
     - [Phase 6 — Failover to c2](#phase-6--failover-to-c2)
-      - [21. Run the namespace-handover system workflow on c1](#21-run-the-namespace-handover-system-workflow-on-c1)
-      - [22. Verify active cluster is now c2](#22-verify-active-cluster-is-now-c2)
-      - [23. Switch clients and workers to c2](#23-switch-clients-and-workers-to-c2)
     - [Phase 7 — Decommission c1](#phase-7--decommission-c1)
-      - [24. Remove c1 from the namespace replication config](#24-remove-c1-from-the-namespace-replication-config)
-      - [25. Verify only c2 remains in replication config](#25-verify-only-c2-remains-in-replication-config)
-      - [26. Delete the namespace on c1](#26-delete-the-namespace-on-c1)
-      - [27. Verify namespace is gone from c1, still present on c2](#27-verify-namespace-is-gone-from-c1-still-present-on-c2)
-      - [28. Disconnect the clusters](#28-disconnect-the-clusters)
-      - [29. Verify c2 no longer references c1](#29-verify-c2-no-longer-references-c1)
-      - [30. Complete running executions on c2](#30-complete-running-executions-on-c2)
   - [Version Upgrades](#version-upgrades)
   - [Setup](#setup)
-  - [Step 1 — Stop the cluster](#step-1--stop-the-cluster)
-  - [Step 2 — Update server source to target version](#step-2--update-server-source-to-target-version)
-  - [Step 3 — Update admin-tools image version](#step-3--update-admin-tools-image-version)
-  - [Step 4 — Check current schema versions](#step-4--check-current-schema-versions)
-  - [Step 5 — Check if schema migration is needed](#step-5--check-if-schema-migration-is-needed)
-  - [Step 6 — Run schema migrations](#step-6--run-schema-migrations)
-  - [Step 7 — Rebuild and start](#step-7--rebuild-and-start)
-  - [Step 8 — Verify upgrade](#step-8--verify-upgrade)
   - [Plaintext Payload Interceptor](#plaintext-payload-interceptor)
   - [MinIO Archival](#minio-archival)
     - [Namespace archival state](#namespace-archival-state)
@@ -456,11 +418,11 @@ Covers: start two clusters → connect them → promote a namespace to global �
 
 ### Phase 1 — Start the clusters
 
-#### 1. Clear your Docker environment (see [Some useful Docker commands](#some-useful-docker-commands))
+1\. Clear your Docker environment (see [Some useful Docker commands](#some-useful-docker-commands))
 
 Stop the single-cluster stack first if it is running. The replication setup expects c1 on `127.0.0.1:7233` and c2 on `127.0.0.1:2233`.
 
-#### 2. Create the network and start both clusters
+2\. Create the network and start both clusters
 
 ```bash
 docker network create temporal-network-replication
@@ -475,14 +437,14 @@ docker volume prune -f
 docker compose -f compose-services-replication.yml up --detach
 ```
 
-#### 3. Verify both clusters are healthy
+3\. Verify both clusters are healthy
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster health
 temporal --address 127.0.0.1:2233 operator cluster health
 ```
 
-#### 4. Confirm cluster names
+4\. Confirm cluster names
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster describe -o json | jq .clusterName
@@ -492,7 +454,7 @@ temporal --address 127.0.0.1:2233 operator cluster describe -o json | jq .cluste
 # expected: "c2"
 ```
 
-#### 5. Get container IPs — needed for the upsert commands in Phase 3
+5\. Get container IPs — needed for the upsert commands in Phase 3
 
 ```bash
 docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' temporalc1
@@ -505,13 +467,13 @@ Note these as `TEMPORALC1_IP` and `TEMPORALC2_IP`.
 
 ### Phase 2 — Seed workflows on c1
 
-#### 6. Create the test namespace on c1
+6\. Create the test namespace on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace create replicationtest
 ```
 
-#### 7. Start sample workflows
+7\. Start sample workflows
 
 > [!NOTE]
 > A workflow is created and documented in this Repo to work through this [replicationtest workflow](./workflow-examples/README.md)
@@ -520,11 +482,11 @@ Run a mix of short (completing) and long-running workflows so you can see both c
 
 [https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c](https://gist.github.com/tsurdilo/f0ef3ea2940e877aaec7489370ae099c) (or see above as this is Java)
 
-#### 8. Verify workflows are on c1
+8\. Verify workflows are on c1
 
 [http://localhost:8081/namespaces/replicationtest/workflows](http://localhost:8081/namespaces/replicationtest/workflows)
 
-#### 9. Confirm namespace does not exist on c2 yet
+9\. Confirm namespace does not exist on c2 yet
 
 [http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
@@ -534,7 +496,7 @@ Run a mix of short (completing) and long-running workflows so you can see both c
 
 Each cluster stores its own peer registry locally — both directions must be run independently.
 
-#### 10. Register c2 as a peer on c1
+10\. Register c2 as a peer on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster upsert \
@@ -543,7 +505,7 @@ temporal --address 127.0.0.1:7233 operator cluster upsert \
   --frontend-address "TEMPORALC2_IP:2233"
 ```
 
-#### 11. Register c1 as a peer on c2
+11\. Register c1 as a peer on c2
 
 ```bash
 temporal --address 127.0.0.1:2233 operator cluster upsert \
@@ -552,7 +514,7 @@ temporal --address 127.0.0.1:2233 operator cluster upsert \
   --frontend-address "TEMPORALC1_IP:7233"
 ```
 
-#### 12. Verify both clusters see each other
+12\. Verify both clusters see each other
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster list
@@ -563,7 +525,7 @@ temporal --address 127.0.0.1:2233 operator cluster list
 
 ### Phase 4 — Promote namespace to global and enable replication
 
-#### 13. Promote `replicationtest` from local to global namespace
+13\. Promote `replicationtest` from local to global namespace
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace update \
@@ -571,7 +533,7 @@ temporal --address 127.0.0.1:7233 operator namespace update \
   --promote-global
 ```
 
-#### 14. Verify it is now a global namespace
+14\. Verify it is now a global namespace
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe \
@@ -579,7 +541,7 @@ temporal --address 127.0.0.1:7233 operator namespace describe \
 # expected: true
 ```
 
-#### 15. Add both clusters to the namespace replication config
+15\. Add both clusters to the namespace replication config
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace update \
@@ -588,14 +550,14 @@ temporal --address 127.0.0.1:7233 operator namespace update \
   --cluster c2
 ```
 
-#### 16. Verify replication config shows both clusters
+16\. Verify replication config shows both clusters
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe \
   --namespace replicationtest -o json | jq .replicationConfig
 ```
 
-#### 17. Confirm namespace now exists on c2
+17\. Confirm namespace now exists on c2
 
 [http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
@@ -607,7 +569,7 @@ No workflows yet — the namespace was replicated but existing executions are no
 
 New executions started after step 15 replicate automatically. The 30 existing executions on c1 need to be force-replicated.
 
-#### 18. Start the force-replication system workflow on c1
+18\. Start the force-replication system workflow on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 workflow start \
@@ -617,11 +579,11 @@ temporal --address 127.0.0.1:7233 workflow start \
   --input '{"Namespace": "replicationtest", "ConcurrentActivityCount": 4, "OverallRps": 80}'
 ```
 
-#### 19. Monitor until complete
+19\. Monitor until complete
 
 [http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22](http://localhost:8081/namespaces/temporal-system/workflows?query=WorkflowType%3D%22force-replication%22)
 
-#### 20. Verify all executions are on c2
+20\. Verify all executions are on c2
 
 [http://localhost:8082/namespaces/replicationtest/workflows](http://localhost:8082/namespaces/replicationtest/workflows)
 
@@ -633,7 +595,7 @@ Expected: 20 completed and 10 running executions.
 
 `namespace-handover` is a safe failover — it waits for replication lag to drain before flipping the active cluster, unlike a direct namespace update.
 
-#### 21. Run the namespace-handover system workflow on c1
+21\. Run the namespace-handover system workflow on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 workflow start \
@@ -643,7 +605,7 @@ temporal --address 127.0.0.1:7233 workflow start \
   --input '{"Namespace": "replicationtest", "RemoteCluster": "c2", "AllowedLaggingSeconds": 120, "HandoverTimeoutSeconds": 5}'
 ```
 
-#### 22. Verify active cluster is now c2
+22\. Verify active cluster is now c2
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace describe replicationtest \
@@ -653,7 +615,7 @@ temporal --address 127.0.0.1:7233 operator namespace describe replicationtest \
 
 > **Note:** If this still shows `"c1"` immediately after the handover workflow completes, wait up to 60 seconds and retry. The namespace registry on each server polls for changes on a 60s interval (`dynamicConfigClient.pollInterval`). The handover itself is done — the cache just hasn't refreshed yet.
 
-#### 23. Switch clients and workers to c2
+23\. Switch clients and workers to c2
 
 Point your SDK workers and clients at `127.0.0.1:2233`. Both clusters have `dcRedirectionPolicy: all-apis-forwarding`, so signals and starts sent to c1 will continue to be forwarded to c2 in the interim — but workers polling c1 will also be forwarded. Stop c1 workers before or immediately after switching DNS/addresses to avoid c1 workers picking up tasks meant for c2.
 
@@ -679,7 +641,7 @@ Point your SDK workers and clients at `127.0.0.1:2233`. Both clusters have `dcRe
 
 ### Phase 7 — Decommission c1
 
-#### 24. Remove c1 from the namespace replication config
+24\. Remove c1 from the namespace replication config
 
 ```bash
 temporal --address 127.0.0.1:2233 operator namespace update \
@@ -687,39 +649,39 @@ temporal --address 127.0.0.1:2233 operator namespace update \
   --cluster c2
 ```
 
-#### 25. Verify only c2 remains in replication config
+25\. Verify only c2 remains in replication config
 
 ```bash
 temporal --address 127.0.0.1:2233 operator namespace describe \
   --namespace replicationtest -o json | jq .replicationConfig
 ```
 
-#### 26. Delete the namespace on c1
+26\. Delete the namespace on c1
 
 ```bash
 temporal --address 127.0.0.1:7233 operator namespace delete \
   --namespace replicationtest
 ```
 
-#### 27. Verify namespace is gone from c1, still present on c2
+27\. Verify namespace is gone from c1, still present on c2
 
 - http://localhost:8081/namespaces/replicationtest — should 404
 - http://localhost:8082/namespaces/replicationtest — should load
 
-#### 28. Disconnect the clusters
+28\. Disconnect the clusters
 
 ```bash
 temporal --address 127.0.0.1:7233 operator cluster remove --name c2
 temporal --address 127.0.0.1:2233 operator cluster remove --name c1
 ```
 
-#### 29. Verify c2 no longer references c1
+29\. Verify c2 no longer references c1
 
 ```bash
 temporal --address 127.0.0.1:2233 operator cluster describe -o json
 ```
 
-#### 30. Complete running executions on c2
+30\. Complete running executions on c2
 
 If you used the Java sample from Phase 2, run the worker pointed at c2 to pick up and complete the 10 running executions:
 
@@ -745,7 +707,7 @@ This setup runs a custom-built Temporal server image from local source (`~/devel
 
 ---
 
-## Step 1 — Stop the cluster
+Step 1 — Stop the cluster
 
 ```bash
 docker compose -f compose-postgres.yml -f compose-services.yml down --remove-orphans
@@ -753,7 +715,7 @@ docker compose -f compose-postgres.yml -f compose-services.yml down --remove-orp
 
 ---
 
-## Step 2 — Update server source to target version
+Step 2 — Update server source to target version
 
 Check out the target release tag in the Temporal server source:
 
@@ -765,7 +727,7 @@ git checkout v1.32.0   # replace with target version
 
 ---
 
-## Step 3 — Update admin-tools image version
+Step 3 — Update admin-tools image version
 
 In `.env`, set `TEMPORAL_ADMINTOOLS_IMG` to the target version:
 
@@ -777,7 +739,7 @@ The admin-tools version must match the server source version so schema migration
 
 ---
 
-## Step 4 — Check current schema versions
+Step 4 — Check current schema versions
 
 ```bash
 docker exec -it temporal-postgresql psql -U temporal -d temporal -c "SELECT curr_version FROM schema_version;"
@@ -788,7 +750,7 @@ Note both versions — these are your baseline before any migration.
 
 ---
 
-## Step 5 — Check if schema migration is needed
+Step 5 — Check if schema migration is needed
 
 Compare your current schema versions (from Step 4) against the highest version available in the target admin-tools image:
 
@@ -806,7 +768,7 @@ If your current schema version is already at the highest version listed — no m
 
 ---
 
-## Step 6 — Run schema migrations
+Step 6 — Run schema migrations
 
 Schema must be updated **before** rolling the binary. Use the target version admin-tools image:
 
@@ -842,7 +804,7 @@ docker run --rm \
 
 ---
 
-## Step 7 — Rebuild and start
+Step 7 — Rebuild and start
 
 Rebuild the server image from the updated source and restart all services:
 
@@ -854,7 +816,7 @@ Docker Compose detects the `build:` stanza on the Temporal service containers an
 
 ---
 
-## Step 8 — Verify upgrade
+Step 8 — Verify upgrade
 
 ```bash
 temporal operator cluster describe -o json
@@ -877,8 +839,8 @@ The custom server in [`server/`](server/) includes a frontend gRPC interceptor t
 
 **What it does:** when any frontend API call carries a payload whose `encoding` metadata is `json/plain` or `binary/plain` (i.e., no payload codec is in use), the interceptor:
 
-1. Increments a Prometheus counter `plaintext_payload_detected_total` tagged with `namespace`, `operation`, `encoding`, and where available `workflowType` and `taskqueue`. The `payload_field` tag identifies which field inside the request held the unencrypted payload — e.g. `input` on a `StartWorkflowExecution` means workflow input args were unencrypted, while `ScheduleActivityTask` on a `RespondWorkflowTaskCompleted` means activity input inside a worker command was unencrypted. This distinction matters because client-side and worker-side unencrypted traffic require different fixes from the tenant.
-2. Emits a structured `WARN` log line with the same fields.
+1\. Increments a Prometheus counter `plaintext_payload_detected_total` tagged with `namespace`, `operation`, `encoding`, and where available `workflowType` and `taskqueue`. The `payload_field` tag identifies which field inside the request held the unencrypted payload — e.g. `input` on a `StartWorkflowExecution` means workflow input args were unencrypted, while `ScheduleActivityTask` on a `RespondWorkflowTaskCompleted` means activity input inside a worker command was unencrypted. This distinction matters because client-side and worker-side unencrypted traffic require different fixes from the tenant.
+2\. Emits a structured `WARN` log line with the same fields.
 
 This gives cluster operators visibility into which tenants and workflow types are still sending unencrypted data, without breaking any existing traffic. The intended use is to run it in observe-only mode, alert on the metric, give tenants time to deploy a payload codec, then optionally harden it into a blocking gate.
 
