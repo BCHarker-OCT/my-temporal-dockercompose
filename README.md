@@ -87,6 +87,16 @@ See the [temporal-etcd-dynconfig](https://github.com/tsurdilo/temporal-etcd-dync
 
 ## Deploying your service
 
+Two repos are expected at specific local paths before running the stack. Clone them once:
+
+```bash
+# Required for building the custom server image
+git clone https://github.com/temporalio/temporal.git ~/devel/temporal/temporal
+
+# Required for etcd-based dynamic config
+git clone https://github.com/tsurdilo/temporal-etcd-dynconfig.git ~/devel/temporal-etcd-dynconfig
+```
+
 This setup targets more of production environments as it deploys each Temporal server role
 (frontend, matching, history, worker) in individual containers.
 The setup runs two instances (containers) for frontend, matching and history hosts.
