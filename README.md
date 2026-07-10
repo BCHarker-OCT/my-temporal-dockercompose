@@ -36,7 +36,7 @@
   - [Dual Visibility](#dual-visibility)
   - [Multi Cluster Replication Setup](#multi-cluster-replication-setup)
     - [Phase 1 — Start the clusters](#phase-1--start-the-clusters)
-      - [1. Clear your Docker environment (see \[Some useful Docker commands\](#some-useful-docker-commands))](#1-clear-your-docker-environment-see-some-useful-docker-commandssome-useful-docker-commands)
+      - [1. Clear your Docker environment (see Some useful Docker commands)](#1-clear-your-docker-environment-see-some-useful-docker-commands)
       - [2. Create the network and start both clusters](#2-create-the-network-and-start-both-clusters)
       - [3. Verify both clusters are healthy](#3-verify-both-clusters-are-healthy)
       - [4. Confirm cluster names](#4-confirm-cluster-names)
@@ -138,44 +138,22 @@ dbs.
 
 ### Using startup.sh (recommended)
 
-Use the helper script to handle setup, startup, shutdown, and quick status checks.
+Use script. Less footguns. Script handles setup + stack orchestration in one place.
 
-One-time prerequisites for custom server build sources:
+Why use it:
 
-```bash
-git clone https://github.com/temporalio/temporal.git ~/devel/temporal/temporal
-git clone https://github.com/tsurdilo/temporal-etcd-dynconfig.git ~/devel/temporal-etcd-dynconfig
-```
+- Runs setup checks automatically (Loki plugin, local dirs, Docker network).
+- Uses stable compose project names for single and replication stacks.
+- Supports stack targeting: `single` (default), `replication`, or `both`.
 
-Run setup once (or any time you want to re-validate local prerequisites):
+> [!NOTE]
+> Need command list or stack options? Run `./startup.sh help`.
 
-```bash
-./startup.sh setup
-```
+For the purposes of this page you have the single node mode and the replication node mode (allowing you to test failover and namespace and job replication):
 
-Start full stack:
-
-```bash
-./startup.sh up
-```
-
-Check container status:
-
-```bash
-./startup.sh status
-```
-
-Stop stack:
-
-```bash
-./startup.sh down
-```
-
-Notes:
-
-- `setup` validates Loki plugin, local directories, and docker network, then prints `Setup complete.`
-- `up` runs setup steps, starts services, then prints current `docker compose ps` status.
-- `status` is read-only and safe to run anytime.
+- `./startup.sh up single` for the single node docker compose.
+- `./startup up replication` for the dual node replication.
+  - Use the `replication-health.sh` script to help get some get details (i.e. IP Addresses) and check health of clusters.
 
 ### Manual docker compose flow
 
@@ -245,7 +223,7 @@ By the way, if you want to docker exec into the postgres container do:
 
 `docker exec -it <temporal-postgres container id> psql -U temporal \l`
 
-which should show the temporal and temporal_visiblity dbs
+which should show the temporal and temporal_visibility dbs
 
 (You can do this via Portainer as well, this just shows the "long way")
 
