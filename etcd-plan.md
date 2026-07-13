@@ -730,7 +730,7 @@ etcd, not with any file.
 ```
 
 **If etcd is empty** (nothing seeded yet), `loadAll()` returns an empty map
-and the server uses compiled-in defaults for every key — same behaviour as an
+and the server uses compiled-in defaults for every key — same behavior as an
 empty `development.yaml`. This is why running `seed-etcd.sh` before first
 startup matters.
 
@@ -746,7 +746,7 @@ The watch stream can be interrupted by etcd leader elections, connection resets,
 or the server compacting its revision history. The supervisor loop handles all
 of these without any operator action:
 
-| Event | Behaviour |
+| Event | Behavior |
 |---|---|
 | Transient stream error | Reload all values from etcd, reopen watch from new revision |
 | etcd compacts past last-seen revision | Same — reload and resubscribe |
