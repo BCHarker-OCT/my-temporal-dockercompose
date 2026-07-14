@@ -31,7 +31,6 @@ create_replication_network() {
 }
 
 create_dirs(){
-	mkdir -p "$USER_HOME"/.config/git/ignore
 	mkdir -p "$USER_HOME"/devel/temporal/temporal
 	mkdir -p "$USER_HOME"/devel/temporal-etcd-dynconfig
 }
