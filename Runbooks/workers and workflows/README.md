@@ -1,5 +1,15 @@
 # Temporal Workers and Workflows
 
+# Table of Contents
+
+- [Temporal Workers and Workflows](#temporal-workers-and-workflows)
+- [Table of Contents](#table-of-contents)
+- [Terms to Know](#terms-to-know)
+- [Basic Temporal Workflow Run](#basic-temporal-workflow-run)
+- [What does the Temporal Service do when Something Goes Wrong](#what-does-the-temporal-service-do-when-something-goes-wrong)
+  - [Platform Failures](#platform-failures)
+  - [Application Failures](#application-failures)
+
 # Terms to Know
 
 | Term | Definition |
@@ -20,7 +30,7 @@
 | Activity Definition | The static code that defines an activity type. |
 | Activity Execution | A running instance created when an activity definition is scheduled by a workflow. |
 | Activity Type | The registered name that maps to an activity definition and distinguishes it from other activities. |
-| gRPC | Remote Procedure Call protocol used by Temporal APIs, with Protocol Buffers (Protobuf) for message serialization. For more information, see ../protobuf-schemas. |
+| gRPC | Remote Procedure Call protocol used by Temporal APIs, with Protocol Buffers (Protobuf) for message serialization. For more information, see [../protobuf-schemas/README.md](../protobuf-schemas/README.md). |
 
 # Basic Temporal Workflow Run
 
@@ -47,7 +57,7 @@ Crucial behavior to remember:
 - Activity execution is at-least-once, so activity handlers should be idempotent.
 - Retry policies and timeouts (workflow and activity level) strongly influence recovery behavior.
 
-# What does the Temporal Service do when Something goes Wrong
+# What does the Temporal Service do when Something Goes Wrong
 
 ## Platform Failures
 - If a worker process crashes, restarts, or loses network connectivity, Temporal keeps workflow state in persistence and reschedules pending tasks.
